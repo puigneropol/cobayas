@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cobaya Clicker</title>
+<style>
+  body{margin:0;min-height:100vh;font-family:system-ui,sans-serif;color:#3b2a1a;background:#fdf1dc}
+  #paisaje{position:fixed;inset:0;width:100%;height:100%;z-index:-1}
+  .esc{opacity:0;transition:opacity 1.2s}
+  main{display:grid;grid-template-columns:minmax(220px,280px) 1fr minmax(220px,280px);gap:20px;padding:16px;max-width:1600px;margin:auto}
+  .lado{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;font-size:14px;opacity:.92}
+  .lado .item{padding:7px 9px;margin:4px 0}
+  .lado .item .em{font-size:20px}
+  .lado .item .n{font-size:16px}
+  .lado h2{font-size:15px}
+  @media (max-width:800px){main{grid-template-columns:1fr}.centro{order:-1}.lado{position:static;max-height:none}}
+  .panel{background:#fffaf2c7;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:18px;padding:14px;box-shadow:0 4px 18px #0001}
+  h2{margin:4px 0 8px;font-size:18px}
+  .centro{text-align:center;position:relative}
+  .z{font-size:40px;font-weight:800;margin:0}
+  .sub{margin:2px 0;opacity:.75}
+  .barra{height:12px;background:#0001;border-radius:8px;overflow:hidden;margin:6px 0 2px}
+  .barra div{height:100%;width:0;background:#ff6fa5;transition:width .2s}
+  .stats{display:inline-block;padding:10px 22px;min-width:min(420px,100%);box-sizing:border-box}
+  #cobaya{background:none;border:0;padding:0;cursor:pointer;width:100%;max-width:min(620px,68vh);margin-top:8px;filter:drop-shadow(0 18px 14px #0003);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #cobaya svg{width:100%;transition:transform .08s}
+  #cobaya:active svg{transform:scale(.92)}
+  .item{display:flex;box-sizing:border-box;width:100%;align-items:center;gap:10px;text-align:left;border:0;border-radius:12px;padding:10px;margin:6px 0;background:#fff;cursor:pointer;font:inherit;color:inherit;touch-action:manipulation}
+  .item:hover:not(:disabled){background:#fff0e0}
+  .item:disabled{opacity:.45;cursor:not-allowed}
+  .item.puesto{outline:3px solid #ff6fa5}
+  .item .em{font-size:26px}
+  .item b{display:block}
+  .item small{opacity:.75}
+  .item .n{margin-left:auto;font-size:20px;font-weight:800}
+  .flota{position:absolute;pointer-events:none;font-weight:800;font-size:28px;color:#e2711d;text-shadow:0 2px 0 #fff;animation:sube .8s ease-out forwards}
+  .flotar{animation:flotar 4s ease-in-out infinite alternate}
+  @keyframes flotar{to{transform:translateY(-16px)}}
+  .saltito{animation:saltito 1.6s ease-in-out infinite}
+  @keyframes saltito{50%{transform:translateY(-10px)}}
+  .humo{animation:humo 2.5s linear infinite}
+  @keyframes humo{from{transform:translateY(0);opacity:.9}to{transform:translateY(-50px);opacity:0}}
+  .nube{animation:nube 30s ease-in-out infinite alternate}
+  @keyframes nube{to{transform:translateX(120px)}}
+  .brilla{animation:brilla 2s ease-in-out infinite alternate}
+  @keyframes brilla{to{opacity:.15}}
+  .mano{animation:toca .6s ease-in-out infinite}
+  @keyframes toca{50%{transform:translateX(-8px)}}
+  @media (prefers-reduced-motion:reduce){.flotar,.saltito,.humo,.nube,.brilla,.mano{animation:none}}
+  @keyframes sube{to{transform:translateY(-70px);opacity:0}}
+  #toast{position:fixed;top:16px;left:50%;transform:translate(-50%,-120px);background:#3b2a1a;color:#fff;padding:12px 20px;border-radius:12px;font-weight:700;transition:transform .3s;z-index:9}
+  #toast.on{transform:translate(-50%,0)}
+  .borrar{margin-top:4px;background:none;border:0;color:inherit;opacity:.8;cursor:pointer;font:inherit;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="toast" role="status"></div>
+<svg id="paisaje" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-pared-jaula" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbefd6"/><stop offset="1" stop-color="#efd7aa"/></linearGradient>
+    <linearGradient id="g-cielo-jardin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#86ccff"/><stop offset="1" stop-color="#e3f6ff"/></linearGradient>
+    <linearGradient id="g-cielo-castillo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b39cf2"/><stop offset="1" stop-color="#ffd3bd"/></linearGradient>
+    <radialGradient id="g-espacio" cx=".5" cy=".3" r=".9"><stop offset="0" stop-color="#3a2a85"/><stop offset="1" stop-color="#0a0720"/></radialGradient>
+    <pattern id="pt-barras" width="80" height="10" patternUnits="userSpaceOnUse"><rect x="36" width="8" height="10" fill="#8f99a3"/></pattern>
+    <pattern id="pt-virutas" width="70" height="40" patternUnits="userSpaceOnUse"><ellipse cx="12" cy="10" rx="10" ry="3" fill="#d9ad66" transform="rotate(20 12 10)"/><ellipse cx="45" cy="28" rx="12" ry="3" fill="#f6dda8" transform="rotate(-25 45 28)"/><ellipse cx="58" cy="8" rx="8" ry="2.5" fill="#cf9f55"/></pattern>
+    <pattern id="pt-rayas" width="80" height="10" patternUnits="userSpaceOnUse"><rect width="40" height="10" fill="#f7cdd9"/></pattern>
+    <pattern id="pt-tablas" width="200" height="50" patternUnits="userSpaceOnUse"><rect width="200" height="50" fill="#b27c50"/><rect y="47" width="200" height="3" fill="#94633c"/><rect x="120" width="3" height="50" fill="#94633c"/></pattern>
+    <pattern id="pt-valla" width="60" height="100" patternUnits="userSpaceOnUse"><path d="M15 100 V20 L27 8 L39 20 V100Z" fill="#fffaf0" stroke="#d8cdb8" stroke-width="2"/></pattern>
+    <pattern id="pt-almenas" width="80" height="30" patternUnits="userSpaceOnUse"><rect width="40" height="30" fill="#a497c4"/></pattern>
+  </defs>
+
+  <g id="p-jaula" class="esc">
+    <rect width="1600" height="900" fill="url(#g-pared-jaula)"/>
+    <rect width="1600" height="600" fill="url(#pt-barras)" opacity=".45"/>
+    <rect y="70" width="1600" height="10" fill="#8f99a3" opacity=".5"/>
+    <rect y="590" width="1600" height="10" fill="#8f99a3" opacity=".6"/>
+    <rect y="600" width="1600" height="300" fill="#e8c78a"/>
+    <rect y="600" width="1600" height="300" fill="url(#pt-virutas)"/>
+    <g transform="translate(110 0)"><rect x="20" y="450" width="280" height="170" rx="8" fill="#c58b4f"/><path d="M0 460 L160 330 L320 460Z" fill="#8d5a2b"/><path d="M110 620 V545 a50 50 0 0 1 100 0 V620Z" fill="#5a3517"/></g>
+    <rect x="1370" y="140" width="80" height="240" rx="36" fill="#d8f1ff" stroke="#86b9d8" stroke-width="5"/><rect x="1380" y="250" width="60" height="120" rx="26" fill="#7cc6f2" opacity=".7"/>
+    <rect x="1395" y="378" width="30" height="24" fill="#6b7680"/><rect x="1404" y="400" width="12" height="90" rx="5" fill="#9aa4ae"/><circle cx="1410" cy="505" r="7" fill="#7cc6f2"/>
+    <ellipse cx="1240" cy="740" rx="120" ry="38" fill="#d94c66"/><ellipse cx="1240" cy="728" rx="100" ry="24" fill="#f3a3b3"/>
+    <g fill="#8a5a2b"><circle cx="1210" cy="726" r="7"/><circle cx="1240" cy="722" r="7"/><circle cx="1268" cy="730" r="7"/><circle cx="1228" cy="734" r="6"/></g>
+  </g>
+
+  <g id="p-salon" class="esc">
+    <rect width="1600" height="600" fill="#fbdde7"/>
+    <rect width="1600" height="600" fill="url(#pt-rayas)" opacity=".6"/>
+    <rect x="200" y="150" width="240" height="170" fill="#8d5a2b"/><rect x="215" y="165" width="210" height="140" fill="#bfe8ff"/><path d="M215 305 Q300 220 425 290 V305Z" fill="#7cc35d"/><circle cx="380" cy="200" r="18" fill="#ffd54a"/>
+    <rect x="1060" y="110" width="340" height="320" fill="#fff"/><rect x="1075" y="125" width="310" height="290" fill="#bfe8ff"/><path d="M1075 415 Q1200 330 1385 380 V415Z" fill="#8fd16f"/>
+    <rect x="1225" y="125" width="10" height="290" fill="#fff"/><rect x="1075" y="265" width="310" height="10" fill="#fff"/>
+    <path d="M1040 95 H1110 Q1090 300 1120 460 H1040Z" fill="#e66a8f"/><path d="M1420 95 H1350 Q1370 300 1340 460 H1420Z" fill="#e66a8f"/><rect x="1030" y="88" width="400" height="12" rx="6" fill="#8d5a2b"/>
+    <rect y="585" width="1600" height="15" fill="#fff"/>
+    <rect y="600" width="1600" height="300" fill="url(#pt-tablas)"/>
+    <ellipse cx="800" cy="780" rx="450" ry="85" fill="#e9a2c2"/><ellipse cx="800" cy="780" rx="390" ry="65" fill="none" stroke="#fff" stroke-width="6" stroke-dasharray="18 12"/>
+    <rect x="60" y="430" width="420" height="140" rx="40" fill="#5f84bd"/><rect x="40" y="520" width="460" height="110" rx="30" fill="#6c93cf"/>
+    <rect x="20" y="490" width="90" height="150" rx="40" fill="#5577aa"/><rect x="430" y="490" width="90" height="150" rx="40" fill="#5577aa"/>
+    <rect x="1497" y="300" width="8" height="340" fill="#555"/><path d="M1440 300 L1560 300 L1530 210 L1470 210Z" fill="#ffe08a"/><ellipse cx="1501" cy="645" rx="45" ry="12" fill="#555"/>
+    <g fill="#4f9d3a"><ellipse cx="1170" cy="540" rx="18" ry="60" transform="rotate(-25 1170 540)"/><ellipse cx="1220" cy="530" rx="18" ry="65" transform="rotate(20 1220 530)"/><ellipse cx="1195" cy="520" rx="16" ry="70"/></g>
+    <path d="M1150 590 h90 l-12 80 h-66z" fill="#c8643b"/>
+  </g>
+
+  <g id="p-jardin" class="esc">
+    <rect width="1600" height="900" fill="url(#g-cielo-jardin)"/>
+    <circle cx="1350" cy="150" r="110" fill="#fff3a6" opacity=".5"/><circle cx="1350" cy="150" r="70" fill="#ffd54a"/>
+    <g class="nube" fill="#fff"><circle cx="300" cy="150" r="45"/><circle cx="350" cy="130" r="55"/><circle cx="410" cy="155" r="40"/></g>
+    <g class="nube" fill="#fff" style="animation-delay:-12s"><circle cx="820" cy="100" r="35"/><circle cx="865" cy="85" r="45"/><circle cx="915" cy="105" r="32"/></g>
+    <path d="M0 560 Q300 420 650 540 T1300 500 T1600 520 V620 H0Z" fill="#a9db8c"/>
+    <rect x="320" y="510" width="1280" height="100" fill="url(#pt-valla)"/><rect x="320" y="540" width="1280" height="10" fill="#fffaf0"/><rect x="320" y="580" width="1280" height="10" fill="#fffaf0"/>
+    <rect x="170" y="360" width="50" height="270" fill="#8d5a2b"/><circle cx="195" cy="330" r="110" fill="#4f9d3a"/><circle cx="120" cy="390" r="70" fill="#5aae43"/><circle cx="270" cy="390" r="75" fill="#5aae43"/>
+    <rect y="600" width="1600" height="300" fill="#72c052"/>
+    <g id="flores"></g>
+  </g>
+
+  <g id="p-castillo" class="esc">
+    <rect width="1600" height="900" fill="url(#g-cielo-castillo)"/>
+    <path d="M0 520 L220 330 L420 500 L640 300 L880 520 L1120 340 L1360 500 L1600 360 V620 H0Z" fill="#9a88c9" opacity=".7"/>
+    <rect x="520" y="330" width="560" height="280" fill="#b3a6cf"/><rect x="520" y="300" width="560" height="30" fill="url(#pt-almenas)"/>
+    <rect x="470" y="230" width="120" height="380" fill="#a497c4"/><rect x="1010" y="230" width="120" height="380" fill="#a497c4"/><rect x="740" y="170" width="120" height="440" fill="#a497c4"/>
+    <path d="M460 232 L530 110 L600 232Z M1000 232 L1070 110 L1140 232Z M730 172 L800 60 L870 172Z" fill="#6b4fa0"/>
+    <path d="M530 110 V70 M1070 110 V70 M800 60 V20" stroke="#444" stroke-width="4"/>
+    <path d="M530 70 h45 l-12 12 l12 12 h-45z M1070 70 h45 l-12 12 l12 12 h-45z M800 20 h45 l-12 12 l12 12 h-45z" fill="#e23b3b"/>
+    <g fill="#4a3a66"><rect x="515" y="300" width="30" height="50" rx="15"/><rect x="1055" y="300" width="30" height="50" rx="15"/><rect x="785" y="230" width="30" height="50" rx="15"/><path d="M745 610 V520 a55 55 0 0 1 110 0 V610Z"/></g>
+    <rect y="600" width="1600" height="300" fill="#7fae6a"/>
+    <path d="M745 600 L855 600 L1000 900 L600 900Z" fill="#c9b99a"/>
+  </g>
+
+  <g id="p-espacio" class="esc">
+    <rect width="1600" height="900" fill="url(#g-espacio)"/>
+    <g id="estrellas"></g>
+    <circle cx="260" cy="170" r="45" fill="#4aa3ff"/><path d="M235 150 q20 -10 30 5 q-5 15 -25 10z M270 185 q15 -5 20 10 q-10 10 -22 0z" fill="#5fcf6a"/>
+    <ellipse cx="1300" cy="220" rx="190" ry="40" fill="none" stroke="#ffd9a6" stroke-width="10" transform="rotate(-15 1300 220)"/><circle cx="1300" cy="220" r="110" fill="#ff9ec4"/>
+    <path d="M0 640 Q200 600 420 630 T850 620 T1250 640 T1600 615 V900 H0Z" fill="#a3a3c2"/>
+    <g fill="#8b8bab"><ellipse cx="300" cy="720" rx="70" ry="18"/><ellipse cx="900" cy="800" rx="110" ry="25"/><ellipse cx="1350" cy="700" rx="60" ry="15"/><ellipse cx="650" cy="690" rx="40" ry="10"/></g>
+  </g>
+
+  <!-- Mejoras compradas, integradas en el paisaje -->
+  <g id="m-planetas"></g><g id="m-fabricas"></g><g id="m-heno"></g><g id="m-huerto"></g><g id="m-amigas"></g>
+</svg>
+<main>
+  <section class="panel lado">
+    <h2>🥕 Mejoras</h2>
+    <div id="mejoras"></div>
+    <h2>🐹 Personajes</h2>
+    <div id="personajes"></div>
+  </section>
+
+  <section class="centro" id="centro">
+    <div class="panel stats">
+    <p class="z">🥕 <span id="z">0</span></p>
+    <p class="sub"><span id="cps">0</span> por segundo · <span id="pc">1</span> por click</p>
+    <p class="sub">👆 <span id="clics">0</span> clics · 🤖 <span id="auto">0</span> autoclics/s</p>
+    <p class="sub"><b>Nivel <span id="nivel">1</span></b> · <span id="escena">Jaula</span></p>
+    <div class="barra"><div id="barra"></div></div>
+    <p class="sub"><small id="falta"></small></p>
+    <button class="borrar" id="sonido"></button> · <button class="borrar" id="borrar">Borrar partida</button>
+    </div><br>
+    <button id="cobaya" aria-label="Acariciar a la cobaya">
+      <svg viewBox="0 -10 240 230" aria-hidden="true">
+        <path id="o-capa" d="M55 95 Q120 55 185 95 L205 195 Q120 212 35 195 Z" fill="#d93636"/>
+        <ellipse cx="65" cy="62" rx="20" ry="14" class="c-oreja" fill="#a0663a" transform="rotate(-30 65 62)"/>
+        <ellipse cx="175" cy="62" rx="20" ry="14" class="c-oreja" fill="#a0663a" transform="rotate(30 175 62)"/>
+        <ellipse cx="65" cy="64" rx="11" ry="7" fill="#e9a3a3" transform="rotate(-30 65 64)"/>
+        <ellipse cx="175" cy="64" rx="11" ry="7" fill="#e9a3a3" transform="rotate(30 175 64)"/>
+        <ellipse cx="85" cy="185" rx="15" ry="9" fill="#f2c1a0"/>
+        <ellipse cx="155" cy="185" rx="15" ry="9" fill="#f2c1a0"/>
+        <ellipse cx="120" cy="120" rx="95" ry="65" class="c-cuerpo" fill="#c98a4b"/>
+        <ellipse cx="72" cy="100" rx="38" ry="32" class="c-mancha" fill="#7a4a25"/>
+        <ellipse cx="120" cy="145" rx="55" ry="38" class="c-panza" fill="#fff4e6"/>
+        <circle cx="90" cy="100" r="10" fill="#222"/><circle cx="93" cy="97" r="3.5" fill="#fff"/>
+        <circle cx="150" cy="100" r="10" fill="#222"/><circle cx="153" cy="97" r="3.5" fill="#fff"/>
+        <circle cx="80" cy="124" r="8" fill="#f7b4c3" opacity=".7"/><circle cx="160" cy="124" r="8" fill="#f7b4c3" opacity=".7"/>
+        <ellipse cx="120" cy="120" rx="8" ry="6" fill="#f29bb0"/>
+        <path d="M111 128 Q120 137 129 128" stroke="#6b3b1e" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M100 122 L70 118 M100 126 L72 132 M140 122 L170 118 M140 126 L168 132" stroke="#6b3b1e" stroke-width="1.5" opacity=".5"/>
+        <!-- Atuendos -->
+        <g id="o-bufanda" fill="#2a7de1"><rect x="50" y="140" width="140" height="18" rx="9"/><rect x="150" y="146" width="18" height="42" rx="6"/><rect x="150" y="176" width="18" height="4" fill="#fff"/></g>
+        <g id="dientes" fill="#fff" stroke="#d8cfc2" stroke-width="1"><rect id="d1" x="112" y="129" width="7.5" height="5" rx="1.5"/><rect id="d2" x="120.5" y="129" width="7.5" height="5" rx="1.5"/></g>
+        <g id="o-gafas" fill="#111"><rect x="72" y="88" width="36" height="22" rx="8"/><rect x="132" y="88" width="36" height="22" rx="8"/><rect x="106" y="94" width="28" height="4"/></g>
+        <g id="o-lazo" fill="#ff6fa5"><path d="M120 55 L95 40 L95 70 Z M120 55 L145 40 L145 70 Z"/><circle cx="120" cy="55" r="8"/></g>
+        <g id="o-copa"><rect x="92" y="0" width="56" height="50" fill="#222"/><rect x="80" y="45" width="80" height="10" rx="3" fill="#222"/><rect x="92" y="35" width="56" height="8" fill="#c22"/></g>
+        <g id="o-corona"><path d="M85 60 L85 25 L102 42 L120 15 L138 42 L155 25 L155 60 Z" fill="#f5c518" stroke="#c99a00" stroke-width="3"/><circle cx="120" cy="45" r="5" fill="#e23"/><circle cx="100" cy="50" r="4" fill="#29f"/><circle cx="140" cy="50" r="4" fill="#29f"/></g>
+        <g id="manos" fill="#f5c9a8" stroke="#c98f6b" stroke-width="2">
+          <g transform="translate(28 150)"><g class="mano"><circle cx="-26" r="12"/><rect x="-24" y="-5" width="24" height="10" rx="5"/></g></g>
+          <g transform="translate(212 150) rotate(180)"><g class="mano" style="animation-delay:-.3s"><circle cx="-26" r="12"/><rect x="-24" y="-5" width="24" height="10" rx="5"/></g></g>
+          <g transform="translate(100 196) rotate(-90)"><g class="mano" style="animation-delay:-.15s"><circle cx="-26" r="12"/><rect x="-24" y="-5" width="24" height="10" rx="5"/></g></g>
+          <g transform="translate(140 196) rotate(-90)"><g class="mano" style="animation-delay:-.45s"><circle cx="-26" r="12"/><rect x="-24" y="-5" width="24" height="10" rx="5"/></g></g>
+        </g>
+        <ellipse id="o-casco" cx="120" cy="105" rx="114" ry="108" fill="#9fd8ff" fill-opacity=".25" stroke="#e6f6ff" stroke-width="5"/>
+      </svg>
+    </button>
+  </section>
+
+  <section class="panel lado">
+    <h2>👒 Atuendos</h2>
+    <div id="atuendos"></div>
+    <h2>🏅 Recompensas por clics</h2>
+    <div id="hitos"></div>
+  </section>
+</main>
+
+<script>
+const PRODUCTORES = [
+  {id: 'amiga',   nombre: 'Cobaya amiga',          em: '🐾', base: 15,    cps: 0.5},
+  {id: 'huerto',  nombre: 'Huerto',                em: '🌱', base: 110,   cps: 3},
+  {id: 'heno',    nombre: 'Pajar de heno',         em: '🌾', base: 900,   cps: 15},
+  {id: 'fabrica', nombre: 'Fábrica de zanahorias', em: '🏭', base: 7000,  cps: 80},
+  {id: 'planeta', nombre: 'Planeta cobaya',        em: '🪐', base: 60000, cps: 450},
+];
+const ATUENDOS = [
+  {id: 'lazo',    nombre: 'Lazo rosa',        em: '🎀', slot: 'cabeza',  nivel: 1, coste: 30},
+  {id: 'gafas',   nombre: 'Gafas de sol',     em: '🕶️', slot: 'ojos',    nivel: 2, coste: 150},
+  {id: 'bufanda', nombre: 'Bufanda',          em: '🧣', slot: 'cuello',  nivel: 3, coste: 700},
+  {id: 'copa',    nombre: 'Sombrero de copa', em: '🎩', slot: 'cabeza',  nivel: 4, coste: 3000},
+  {id: 'capa',    nombre: 'Capa de héroe',    em: '🦸', slot: 'espalda', nivel: 5, coste: 12000},
+  {id: 'corona',  nombre: 'Corona real',      em: '👑', slot: 'cabeza',  nivel: 7, coste: 150000},
+  {id: 'casco',   nombre: 'Casco espacial',   em: '🚀', slot: 'cabeza',  nivel: 9, coste: 1500000},
+];
+const PERSONAJES = [ // colores: cuerpo, mancha, panza, orejas
+  {id: 'canela', nombre: 'Canela', mejora: 'La original',              nivel: 1, coste: 0,      colores: ['#c98a4b', '#7a4a25', '#fff4e6', '#a0663a']},
+  {id: 'nube',   nombre: 'Nube',   mejora: '+50% por click',           nivel: 2, coste: 500,    colores: ['#f4f1ec', '#e0d2bf', '#ffffff', '#d9cbb8']},
+  {id: 'oreo',   nombre: 'Oreo',   mejora: '+50% producción por seg.', nivel: 4, coste: 5000,   colores: ['#3a302c', '#f4f1ec', '#ffffff', '#241c19']},
+  {id: 'rizos',  nombre: 'Rizos',  mejora: 'Autoclics x2',             nivel: 6, coste: 60000,  colores: ['#9a9a9a', '#5d5d5d', '#ececec', '#6f6f6f']},
+  {id: 'dorada', nombre: 'Dorada', mejora: '¡x2 a todo!',              nivel: 8, coste: 800000, colores: ['#f2c14e', '#d9932b', '#fff3c4', '#c98a1c']},
+];
+const ESCENAS = [ // cada una es un grupo <g id="p-..."> del paisaje
+  {nivel: 1, nombre: 'Jaula',    id: 'jaula'},
+  {nivel: 3, nombre: 'Salón',    id: 'salon'},
+  {nivel: 5, nombre: 'Jardín',   id: 'jardin'},
+  {nivel: 7, nombre: 'Castillo', id: 'castillo'},
+  {nivel: 9, nombre: 'Espacio',  id: 'espacio'},
+];
+
+const $ = id => document.getElementById(id);
+const coste = (base, n) => Math.ceil(base * 1.15 ** n);
+const costeDientes = n => 40 * 3 ** n;
+const umbral = l => l <= 1 ? 0 : 50 * 4 ** (l - 2); // zanahorias totales para llegar al nivel l
+function nivelPara(total) { let l = 1; while (total >= umbral(l + 1)) l++; return l; }
+function fmt(n) {
+  if (n < 1000) return n < 10 && n % 1 ? n.toFixed(1) : Math.floor(n) + '';
+  const u = ['K', 'M', 'B', 'T']; let i = -1;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return n.toFixed(n < 10 ? 2 : 1).replace(/\.?0+$/, '') + u[i];
+}
+console.assert(nivelPara(0) === 1 && nivelPara(50) === 2 && nivelPara(199) === 2 && nivelPara(200) === 3, 'niveles');
+console.assert(fmt(1500) === '1.5K' && fmt(0.5) === '0.5' && fmt(999.9) === '999', 'fmt');
+
+// Partida guardada
+const GUARDADO = 'cobaya-clicker';
+let S = {z: 0, total: 0, prod: {}, dientes: 0, atuendos: [], puesto: {}, nivel: 1, clics: 0, autoclic: 0, hitos: 0,
+  personajes: ['canela'], personaje: 'canela', sonido: true};
+try { Object.assign(S, JSON.parse(localStorage.getItem(GUARDADO)) || {}); } catch (e) {}
+const guardar = () => localStorage.setItem(GUARDADO, JSON.stringify(S));
+
+const tiene = id => S.personajes.includes(id);
+const mult = () => (1 + 0.1 * (S.nivel - 1)) * (1 + 0.05 * S.atuendos.length) * (tiene('dorada') ? 2 : 1);
+const multProd = () => mult() * (tiene('oreo') ? 1.5 : 1);
+const cps = () => PRODUCTORES.reduce((s, p) => s + p.cps * (S.prod[p.id] || 0), 0) * multProd();
+const porClick = () => (1 + S.dientes) * mult() * (1 + 0.25 * S.hitos) * (tiene('nube') ? 1.5 : 1);
+const autoPorSeg = () => S.autoclic * (tiene('rizos') ? 2 : 1);
+
+// Recompensas por clics (los autoclics también cuentan)
+const HITOS = [
+  {clics: 100,   em: '🥉', nombre: 'Bronce'},
+  {clics: 1e3,   em: '🥈', nombre: 'Plata'},
+  {clics: 1e4,   em: '🥇', nombre: 'Oro'},
+  {clics: 1e5,   em: '🏆', nombre: 'Trofeo'},
+  {clics: 1e6,   em: '💎', nombre: 'Diamante'},
+  {clics: 1e7,   em: '🌟', nombre: 'Leyenda'},
+];
+const costeAuto = n => Math.ceil(100 * 1.4 ** n);
+function sumarClics(n) {
+  S.clics += n;
+  ganar(n * porClick());
+  while (S.hitos < HITOS.length && S.clics >= HITOS[S.hitos].clics) {
+    const h = HITOS[S.hitos++];
+    ganar(h.clics * mult()); // premio: tantas zanahorias como clics del hito
+    toast(`${h.em} ¡Medalla ${h.nombre}! ${fmt(h.clics)} clics · +${fmt(h.clics * mult())} 🥕 y +25% por click`);
+  }
+}
+
+function toast(t) {
+  $('toast').textContent = t; $('toast').classList.add('on');
+  clearTimeout(toast.t); toast.t = setTimeout(() => $('toast').classList.remove('on'), 2500);
+}
+
+function ganar(n) {
+  S.z += n; S.total += n;
+  const l = nivelPara(S.total);
+  if (l > S.nivel) {
+    S.nivel = l;
+    const nuevos = ATUENDOS.filter(a => a.nivel === l).map(a => a.em + ' ' + a.nombre);
+    const esc = ESCENAS.find(e => e.nivel === l);
+    toast(`¡Nivel ${l}!` + (esc ? ` Nuevo escenario: ${esc.nombre}` : '') + (nuevos.length ? ` · Desbloqueado: ${nuevos.join(', ')}` : ''));
+    pintarEscena();
+  }
+}
+
+function pintarEscena() {
+  const esc = ESCENAS.filter(e => S.nivel >= e.nivel).pop();
+  $('escena').textContent = esc.nombre;
+  for (const e of ESCENAS) $('p-' + e.id).style.opacity = e === esc ? 1 : 0;
+}
+
+function pintarPersonaje() {
+  const p = PERSONAJES.find(p => p.id === S.personaje) || PERSONAJES[0];
+  ['cuerpo', 'mancha', 'panza', 'oreja'].forEach((parte, i) =>
+    document.querySelectorAll('.c-' + parte).forEach(el => el.setAttribute('fill', p.colores[i])));
+  $('cobaya').setAttribute('aria-label', `Acariciar a ${p.nombre}`);
+}
+
+// Chillido "uic" sintetizado: no hace falta ningún archivo de audio
+let audio;
+function uic() {
+  if (!S.sonido) return;
+  audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+  if (audio.state !== 'running') audio.resume();
+  const t = audio.currentTime + 0.01, o = audio.createOscillator(), g = audio.createGain();
+  const f = 900 + Math.random() * 400;
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(f, t);
+  o.frequency.exponentialRampToValueAtTime(f * 1.8, t + 0.08);
+  o.frequency.exponentialRampToValueAtTime(f * 1.2, t + 0.16);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  o.connect(g).connect(audio.destination);
+  o.start(t); o.stop(t + 0.2);
+}
+
+// Las mejoras compradas aparecen en el paisaje y crecen con cada compra
+const cuerpoCobaya = ([c, m, p, o]) => `<ellipse cx="65" cy="62" rx="20" ry="14" fill="${o}"/><ellipse cx="175" cy="62" rx="20" ry="14" fill="${o}"/><ellipse cx="85" cy="185" rx="15" ry="9" fill="#f2c1a0"/><ellipse cx="155" cy="185" rx="15" ry="9" fill="#f2c1a0"/><ellipse cx="120" cy="120" rx="95" ry="65" fill="${c}"/><ellipse cx="72" cy="100" rx="38" ry="32" fill="${m}"/><ellipse cx="120" cy="145" rx="55" ry="38" fill="${p}"/><circle cx="90" cy="100" r="10" fill="#222"/><circle cx="150" cy="100" r="10" fill="#222"/><ellipse cx="120" cy="120" rx="8" ry="6" fill="#f29bb0"/>`;
+const PLANETA_COLORES = ['#9b7cf2', '#ffb36b', '#5fd3c4', '#ff7aa8'];
+function pintarMejoras() {
+  const n = id => S.prod[id] || 0;
+  // Dientes: crecen un poquito con cada compra
+  $('dientes').style.display = S.dientes ? '' : 'none';
+  for (const d of ['d1', 'd2']) $(d).setAttribute('height', 5 + Math.min(S.dientes, 40) * 0.4);
+  // Autoclic: manitas que tocan a la cobaya
+  [...$('manos').children].forEach((m, i) => m.style.display = i < S.autoclic ? '' : 'none');
+
+  // Huerto: dos parcelas que se van llenando; las plantas crecen y salen zanahorias
+  const hu = n('huerto'), tam = 0.6 + Math.min(hu, 40) * 0.02, sitios = [];
+  for (const y of [852, 888]) for (let x = 360; x <= 1240; x += 55) sitios.push([x + (y > 870 ? 27 : 0), y]);
+  sitios.sort((a, b) => Math.abs(b[0] - 800) - Math.abs(a[0] - 800)); // empieza por los lados de la cobaya
+  $('m-huerto').innerHTML = sitios.slice(0, hu).map(([x, y]) => `<g transform="translate(${x} ${y}) scale(${tam})"><ellipse rx="30" ry="9" fill="#6b4423"/><path d="M0 0 C-14 -20 -18 -40 -10 -52 C-4 -38 0 -24 0 0 C2 -26 8 -44 16 -54 C20 -36 12 -18 0 0" fill="#3f9b3a"/>${hu >= 4 ? '<path d="M-12 0 a12 9 0 0 1 24 0z" fill="#ff8a2a"/>' : ''}</g>`).join('');
+
+  // Pajar: balas de heno apiladas en pirámide
+  const balas = [[1180, 640], [1285, 640], [1390, 640], [1495, 640], [1232, 580], [1337, 580], [1442, 580], [1285, 520], [1390, 520], [1337, 460]];
+  $('m-heno').innerHTML = balas.slice(0, n('heno')).map(([x, y]) => `<g transform="translate(${x - 50} ${y})"><rect width="100" height="60" rx="12" fill="#e9c55c" stroke="#c49a2e" stroke-width="4"/><path d="M10 20 h80 M10 40 h80" stroke="#c49a2e" stroke-width="3"/><rect x="28" width="8" height="60" fill="#b07b2a"/><rect x="64" width="8" height="60" fill="#b07b2a"/></g>`).join('');
+
+  // Fábricas en el horizonte, más grandes cuantas más tengas
+  const ef = 0.7 + Math.min(n('fabrica'), 20) * 0.025;
+  $('m-fabricas').innerHTML = [470, 1130, 300, 1300].slice(0, n('fabrica')).map(x => `<g transform="translate(${x} 605) scale(${ef})"><rect x="-80" y="-90" width="160" height="90" fill="#9b8f86"/><path d="M-80 -90 l40 -30 v30 l40 -30 v30 l40 -30 v30 l40 -30 v30z" fill="#7d726a"/><rect x="40" y="-170" width="24" height="80" fill="#6c625b"/><rect x="-60" y="-55" width="30" height="25" fill="#ffd27a"/><rect x="-15" y="-55" width="30" height="25" fill="#ffd27a"/><path d="M25 -40 l22 -8 v16z" fill="#ff8a2a"/><g class="humo"><circle cx="52" cy="-185" r="14" fill="#eee"/><circle cx="62" cy="-210" r="18" fill="#eee" opacity=".7"/></g></g>`).join('');
+
+  // Planetas en el cielo
+  const rp = 26 + Math.min(n('planeta'), 30);
+  $('m-planetas').innerHTML = [[180, 330], [1460, 430], [640, 110], [1000, 330]].slice(0, n('planeta')).map(([x, y], i) => `<g transform="translate(${x} ${y})"><g class="flotar" style="animation-delay:-${i * 1.3}s"><circle r="${rp}" fill="${PLANETA_COLORES[i]}"/><ellipse rx="${rp * 1.8}" ry="${rp * 0.4}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="5" transform="rotate(-20)"/></g></g>`).join('');
+
+  // Cobayas amigas paseando por el suelo
+  const sitiosAmigas = [[690, 800], [930, 820], [560, 880], [1060, 880], [420, 720], [1180, 730], [800, 880], [300, 860]];
+  $('m-amigas').innerHTML = sitiosAmigas.slice(0, n('amiga')).map(([x, y], i) => `<g transform="translate(${x - 50} ${y - 80}) scale(.42)"><g class="saltito" style="animation-delay:-${i * 0.4}s">${cuerpoCobaya(PERSONAJES[i % PERSONAJES.length].colores)}</g></g>`).join('');
+}
+
+function pintarAtuendos() {
+  for (const a of ATUENDOS) $('o-' + a.id).style.display = S.puesto[a.slot] === a.id ? '' : 'none';
+}
+
+// Botones de la tienda: se crean una vez y luego solo se actualizan
+function crearBoton(padre, alClicar) {
+  const b = document.createElement('button');
+  b.className = 'item';
+  b.innerHTML = '<span class="em"></span><span><b></b><small></small></span><span class="n"></span>';
+  b.onclick = alClicar;
+  padre.appendChild(b);
+  return b;
+}
+function rellenar(b, em, titulo, detalle, n) {
+  b.children[0].textContent = em;
+  b.children[1].children[0].textContent = titulo;
+  b.children[1].children[1].textContent = detalle;
+  b.children[2].textContent = n;
+}
+
+const botonDientes = crearBoton($('mejoras'), () => {
+  const c = costeDientes(S.dientes);
+  if (S.z >= c) { S.z -= c; S.dientes++; pintarMejoras(); }
+});
+const botonAuto = crearBoton($('mejoras'), () => {
+  const c = costeAuto(S.autoclic);
+  if (S.z >= c) { S.z -= c; S.autoclic++; pintarMejoras(); }
+});
+const filasHitos = HITOS.map(() => $('hitos').appendChild(Object.assign(document.createElement('div'), {className: 'item'})));
+const botonesProd = PRODUCTORES.map(p => crearBoton($('mejoras'), () => {
+  const c = coste(p.base, S.prod[p.id] || 0);
+  if (S.z >= c) { S.z -= c; S.prod[p.id] = (S.prod[p.id] || 0) + 1; pintarMejoras(); }
+}));
+const botonesPersonaje = PERSONAJES.map(p => crearBoton($('personajes'), () => {
+  if (!tiene(p.id)) {
+    if (S.nivel < p.nivel || S.z < p.coste) return;
+    S.z -= p.coste; S.personajes.push(p.id);
+    toast(`🐹 ¡${p.nombre} se une a la familia! ${p.mejora}`);
+  }
+  S.personaje = p.id;
+  pintarPersonaje();
+}));
+const botonesAtuendo = ATUENDOS.map(a => crearBoton($('atuendos'), () => {
+  if (!S.atuendos.includes(a.id)) {
+    if (S.nivel < a.nivel || S.z < a.coste) return;
+    S.z -= a.coste; S.atuendos.push(a.id);
+    toast(`${a.em} ¡${a.nombre} conseguido! (+5% a todo)`);
+  }
+  S.puesto[a.slot] = S.puesto[a.slot] === a.id ? null : a.id;
+  pintarAtuendos();
+}));
+
+function actualizar() {
+  $('z').textContent = fmt(Math.floor(S.z));
+  $('cps').textContent = fmt(cps());
+  $('pc').textContent = fmt(porClick());
+  $('nivel').textContent = S.nivel;
+  const ini = umbral(S.nivel), fin = umbral(S.nivel + 1);
+  $('barra').style.width = Math.min(100, (S.total - ini) / (fin - ini) * 100) + '%';
+  $('falta').textContent = `Faltan ${fmt(Math.ceil(fin - S.total))} 🥕 para el nivel ${S.nivel + 1}`;
+
+  const cd = costeDientes(S.dientes);
+  rellenar(botonDientes, '🦷', 'Dientes afilados', `+1 por click · 🥕 ${fmt(cd)}`, S.dientes);
+  botonDientes.disabled = S.z < cd;
+  const ca = costeAuto(S.autoclic);
+  rellenar(botonAuto, '🤖', 'Autoclic', `+1 clic por segundo · 🥕 ${fmt(ca)}`, S.autoclic);
+  botonAuto.disabled = S.z < ca;
+  $('clics').textContent = fmt(Math.floor(S.clics));
+  $('auto').textContent = autoPorSeg();
+  HITOS.forEach((h, i) => {
+    const hecho = i < S.hitos;
+    filasHitos[i].textContent = `${hecho ? h.em : '⬜'} ${h.nombre}: ${fmt(h.clics)} clics — ` +
+      (hecho ? '✅ conseguida' : `${fmt(Math.floor(Math.min(S.clics, h.clics)))} / ${fmt(h.clics)}`);
+    filasHitos[i].style.opacity = hecho || i === S.hitos ? 1 : 0.7;
+  });
+  PRODUCTORES.forEach((p, i) => {
+    const n = S.prod[p.id] || 0, c = coste(p.base, n);
+    rellenar(botonesProd[i], p.em, p.nombre, `+${fmt(p.cps * multProd())}/s · 🥕 ${fmt(c)}`, n);
+    botonesProd[i].disabled = S.z < c;
+  });
+  $('sonido').textContent = S.sonido ? '🔊 Sonido: sí' : '🔇 Sonido: no';
+  PERSONAJES.forEach((p, i) => {
+    const b = botonesPersonaje[i], mio = tiene(p.id), elegida = S.personaje === p.id;
+    if (mio) rellenar(b, '⬤', p.nombre, `${p.mejora} · ${elegida ? 'en pantalla' : 'toca para elegir'}`, '');
+    else if (S.nivel < p.nivel) rellenar(b, '🔒', p.nombre, `${p.mejora} · nivel ${p.nivel}`, '');
+    else rellenar(b, '⬤', p.nombre, `${p.mejora} · 🥕 ${fmt(p.coste)}`, '');
+    b.children[0].style.color = mio || S.nivel >= p.nivel ? p.colores[0] : '';
+    b.children[0].style.webkitTextStroke = '1px #0003';
+    b.disabled = !mio && (S.nivel < p.nivel || S.z < p.coste);
+    b.classList.toggle('puesto', elegida);
+  });
+  ATUENDOS.forEach((a, i) => {
+    const b = botonesAtuendo[i], tengo = S.atuendos.includes(a.id), puesto = S.puesto[a.slot] === a.id;
+    if (tengo) rellenar(b, a.em, a.nombre, puesto ? 'Puesto · toca para quitar' : 'Toca para ponértelo', '');
+    else if (S.nivel < a.nivel) rellenar(b, '🔒', a.nombre, `Se desbloquea en el nivel ${a.nivel}`, '');
+    else rellenar(b, a.em, a.nombre, `🥕 ${fmt(a.coste)}`, '');
+    b.disabled = !tengo && (S.nivel < a.nivel || S.z < a.coste);
+    b.classList.toggle('puesto', puesto);
+  });
+}
+
+$('cobaya').addEventListener('click', e => {
+  const n = porClick();
+  uic(); sumarClics(1);
+  const r = $('centro').getBoundingClientRect(), f = document.createElement('span');
+  f.className = 'flota'; f.textContent = '+' + fmt(n);
+  // Con teclado no hay coordenadas: sale en el centro de la cobaya
+  const bx = e.clientX || $('cobaya').getBoundingClientRect().x + $('cobaya').offsetWidth / 2, by = e.clientY || $('cobaya').getBoundingClientRect().y + $('cobaya').offsetHeight / 2;
+  f.style.left = (bx - r.left - 15) + 'px'; f.style.top = (by - r.top - 20) + 'px';
+  $('centro').appendChild(f); setTimeout(() => f.remove(), 800);
+  actualizar();
+});
+
+$('sonido').onclick = () => { S.sonido = !S.sonido; actualizar(); };
+$('borrar').onclick = () => {
+  if (!confirm('¿Seguro que quieres borrar toda la partida?')) return;
+  borrando = true; localStorage.removeItem(GUARDADO); location.reload();
+};
+let borrando = false;
+addEventListener('beforeunload', () => { if (!borrando) guardar(); });
+setInterval(guardar, 5000);
+
+let ultimo = performance.now();
+setInterval(() => {
+  const ahora = performance.now();
+  const dt = (ahora - ultimo) / 1000; ultimo = ahora;
+  ganar(cps() * dt);
+  if (S.autoclic) sumarClics(autoPorSeg() * dt);
+  actualizar();
+}, 100);
+
+const azar = (a, b) => a + Math.random() * (b - a);
+$('flores').innerHTML = Array.from({length: 45}, () => {
+  const x = azar(0, 1600), y = azar(630, 890), c = ['#ff7aa8', '#ffd54a', '#fff', '#c58bff'][Math.floor(azar(0, 4))];
+  return `<circle cx="${x}" cy="${y}" r="${azar(4, 8)}" fill="${c}"/><circle cx="${x}" cy="${y}" r="2.5" fill="#f5a623"/>`;
+}).join('');
+$('estrellas').innerHTML = Array.from({length: 150}, (_, i) =>
+  `<circle cx="${azar(0, 1600)}" cy="${azar(0, 640)}" r="${azar(0.8, 2.6)}" fill="#fff" opacity="${azar(0.4, 1)}"${i % 5 ? '' : ' class="brilla"'}/>`).join('');
+
+pintarEscena(); pintarAtuendos(); pintarPersonaje(); pintarMejoras(); actualizar();
+</script>
+</body>
+</html>
